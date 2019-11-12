@@ -2,6 +2,7 @@ const sha256 = require('crypto-js/sha256');
 const { createSign, verifySign } = require('./utils.js');
 
 const target = 1000;
+const TRANSACTIONS = {};
 
 class OutputKey {
     constructor(txId, outputId) {
@@ -58,6 +59,9 @@ exports.createTx = (_id, _inputs, _outputs, _privateKeys) => {
     }
     console.log(myHash(JSON.stringify(transaction)));
     console.log(transaction.nonce);
+
+    TRANSACTIONS[transaction['id']] = transaction;
+    console.log(TRANSACTIONS);
     return transaction;
 };
 
@@ -68,7 +72,7 @@ function addInput(_tx, _input, _privateKey){
 }
 
 function addOutput(_tx, _output){
-    _output['id'] = _tx.outputs.length;
+    _output['id'] = _tx.outputs.length; // index in array outputs in transaction
     _tx.outputs.push(_output);
 }
 
@@ -89,13 +93,20 @@ exports.validateTx = (tx) => {
         return false
     }
 
+    let output_sum = 0;
+    let input_sum = 0;
     tx.inputs.forEach(input => {
-        const inputCopy = {...input};
-        delete inputCopy['signature'];
+        let output_tx_index = input.outputKey.outputId;
+        input_sum += TRANSACTIONS[input['outputKey']['txId']].outputs[output_tx_index].amount;
+
         if (verifySign(JSON.stringify(inputCopy), input['outputKey']['pubKey'], input['signature'])) {
             return false
         }
     });
 
-    return true
+    tx.outputs.forEach(output =>{
+        output_sum += output.amount;
+    });
+
+    return output_sum <= input_sum;
 };

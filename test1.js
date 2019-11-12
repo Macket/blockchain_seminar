@@ -10,6 +10,7 @@ output1 = TX.createOutput(100, publicKey);
 output2 = TX.createOutput(150, publicKey);
 output3 = TX.createOutput(20, publicKey);
 const tx1 = TX.createTx(1, [], [output1, output2, output3], []);
+TRANSACTIONS[tx1['id']] = tx1;
 
 input1 = TX.createInput({txId: tx1['id'], outputId: tx1['outputs'][0]['id']});
 input2 = TX.createInput({txId: tx1['id'], outputId: tx1['outputs'][1]['id']});
@@ -21,6 +22,7 @@ inputlist = [input1, input2, input3];
 outputlist = [output4];
 
 const tx2 = TX.createTx(2, inputlist, outputlist, [privateKey, privateKey, privateKey]);
+TRANSACTIONS[tx2['id']] = tx2;
 
 tx2.inputs.forEach(input => {
     console.log(input);
