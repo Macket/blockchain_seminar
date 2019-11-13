@@ -96,11 +96,14 @@ exports.validateTx = (tx) => {
     let output_sum = 0;
     let input_sum = 0;
     tx.inputs.forEach(input => {
-        let output_tx_index = input.outputKey.outputId;
-        input_sum += TRANSACTIONS[input['outputKey']['txId']].outputs[output_tx_index].amount;
+        const output_tx_index = input.outputKey.outputId;
+        const output = TRANSACTIONS[input['outputKey']['txId']].outputs[output_tx_index];
+        input_sum += output.amount;
 
-        if (verifySign(JSON.stringify(inputCopy), input['outputKey']['pubKey'], input['signature'])) {
-            return false
+        const inputCopy = {...input};
+        delete inputCopy['signature'];
+        if (verifySign(JSON.stringify(inputCopy), output.pubKey, input['signature'])) {
+            return false;
         }
     });
 
