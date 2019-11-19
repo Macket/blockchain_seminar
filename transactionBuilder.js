@@ -1,5 +1,8 @@
 const sha256 = require('crypto-js/sha256');
+const redis = require('redis');
+const client = redis.createClient();
 const { createSign, verifySign } = require('./utils.js');
+
 
 const target = 1000;
 const TRANSACTIONS = {};
@@ -40,12 +43,11 @@ function myHash(_value){
     return Math.round(parseInt(sha256(_value),16)/Math.pow(10, 70))
 }
 
-exports.createTx = (_id, _inputs, _outputs, _privateKeys) => {
+exports.createTx = (_inputs, _outputs, _privateKeys) => {
     var transaction = {
-        id: _id,
-        nonce: 0,
         inputs: [],
-        outputs: []
+        outputs: [],
+        timestamp: Date.now()
     };
     _inputs.forEach((input, idx) => {
         addInput(transaction, input, _privateKeys[idx])
@@ -54,14 +56,8 @@ exports.createTx = (_id, _inputs, _outputs, _privateKeys) => {
         addOutput(transaction, output)
     });
 
-    while (myHash(JSON.stringify(transaction)) >= target) {
-        transaction.nonce += 1;
-    }
-    console.log(myHash(JSON.stringify(transaction)));
-    console.log(transaction.nonce);
+    transaction['id'] = myHash(JSON.stringify(transaction));
 
-    TRANSACTIONS[transaction['id']] = transaction;
-    console.log(TRANSACTIONS);
     return transaction;
 };
 
@@ -112,4 +108,16 @@ exports.validateTx = (tx) => {
     });
 
     return output_sum <= input_sum;
+};
+
+exports.redisSet = (key, value) => {
+    client.set(key, JSON.stringify(value));
+};
+
+exports.handleTx = (_inputs, _outputs, _privateKeys) => {
+    const tx = this.createTx(_inputs, _outputs, _privateKeys);
+    if (this.validateTx(tx)) {
+        console.log(tx);
+        this.redisSet(tx.id, JSON.stringify(tx));
+    }
 };
