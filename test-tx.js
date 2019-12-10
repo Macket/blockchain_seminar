@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const TX = require('./transactionBuilder.js');
-const { genKeys,  } = require('./utils.js');
+const { genKeys,  } = require('./cryptoUtils.js');
 
-const { privateKey, publicKey } = genKeys();
+const { publicKey, privateKey } = genKeys();
 
-console.log(privateKey, publicKey);
+console.log(publicKey, privateKey);
 
 output1 = TX.createOutput(100, publicKey);
 output2 = TX.createOutput(150, publicKey);

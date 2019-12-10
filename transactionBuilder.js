@@ -1,11 +1,11 @@
 const sha256 = require('crypto-js/sha256');
 const redis = require('redis');
 const client = redis.createClient();
-const { createSign, verifySign } = require('./utils.js');
+const { createSign, verifySign } = require('./cryptoUtils.js');
+const { redisGet } = require('./redisUtils');
 
 
 const target = 1000;
-const TRANSACTIONS = {};
 
 class OutputKey {
     constructor(txId, outputId) {
@@ -15,29 +15,22 @@ class OutputKey {
 }
 
 exports.createInput = (_outputKey) => {
-    var input = {
-        id : -1,
-        type : "input",
-        outputKey : _outputKey // {txId: 1, outputId: 2},
+    return {
+        id: -1,
+        type: "input",
+        outputKey: _outputKey // {txId: 1, outputId: 2},
     };
-
-    return input;
 };
 
 exports.createOutput = (_amount, _publicKey) => {
-    var output = {
-        id : -1,
-        type : "output",
-        amount : _amount,
-        pubKey : _publicKey
+    return {
+        id: -1,
+        type: "output",
+        amount: _amount,
+        pubKey: _publicKey,
+        is_spent: false
     };
-    return output;
 };
-
-function randomId(){
-    a = Math.random();
-    return myHash(a.toString());
-}
 
 function myHash(_value){
     return Math.round(parseInt(sha256(_value),16)/Math.pow(10, 70))
@@ -91,9 +84,17 @@ exports.validateTx = (tx) => {
 
     let output_sum = 0;
     let input_sum = 0;
-    tx.inputs.forEach(input => {
-        const output_tx_index = input.outputKey.outputId;
-        const output = TRANSACTIONS[input['outputKey']['txId']].outputs[output_tx_index];
+    tx.inputs.forEach(async input => {
+        const outputTx = await redisGet(`tx_${input.outputKey.txId}`);
+        if (!outputTx) {
+            return false
+        }
+
+        const output = outputTx.outputs[input.outputKey.outputId];
+        if (!output) {
+            return false
+        }
+
         input_sum += output.amount;
 
         const inputCopy = {...input};
@@ -110,9 +111,6 @@ exports.validateTx = (tx) => {
     return output_sum <= input_sum;
 };
 
-exports.redisSet = (key, value) => {
-    client.set(key, JSON.stringify(value));
-};
 
 exports.handleTx = (_inputs, _outputs, _privateKeys) => {
     const tx = this.createTx(_inputs, _outputs, _privateKeys);

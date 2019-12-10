@@ -2,23 +2,19 @@
 const http = require(`http`);
 const express = require('express');
 const bodyParser = require('body-parser');
-const { handleTx } = require('./transactionBuilder');
-const { genKeys,  } = require('./utils.js');
-const { redisGet, redisSet } = require('./redis_utils.js');
+const { validateTx } = require('./transactionBuilder');
+const { genKeys,  } = require('./cryptoUtils.js');
+const { redisGet, redisSet } = require('./redisUtils.js');
 const { createGenesisTx } = require('./genesis');
 
-const { privateKey, publicKey } = genKeys();
 
-//get the port from the user or set the default port
 const HTTP_PORT = process.env.HTTP_PORT || 3001;
-console.log(process.env.HTTP_PORT);
+const { publicKey, privateKey } = genKeys(String(HTTP_PORT));
 
 let peers = [];
 
-//create a new app
+//create a new app and using the blody parser middleware
 const app  = express();
-
-//using the blody parser middleware
 app.use(bodyParser.json());
 
 // ---------------------- API ----------------------
@@ -34,10 +30,18 @@ app.get('/handshake',(req,res)=>{
     console.log(peers)
 });
 
-app.post("/transact", (req, res) => {
+app.post("/transact", async (req, res) => {
     const new_tx = JSON.parse(req.body.tx);
-    if (redisGet(new_tx.id) === null) {
-        redisSet(new_tx.id, new_tx);
+    const tx_from_pool = await redisGet(new_tx.id);
+    if (tx_from_pool === null) {
+        if (validateTx(new_tx)) {
+            redisSet(new_tx.id, new_tx);
+            res.json({ 'Response': 'OK' });
+        } else {
+            res.json({ 'Response': 'Invalid transaction' });
+        }
+    } else {
+        res.json({ 'Response': 'Already exists' });
     }
 });
 
@@ -74,5 +78,5 @@ http.get(`http://${connectionServerIp}:${connectionServerPort}/peers?address=127
 // ---------------------- INITIAL TRANSACTION ----------------------
 
 if (HTTP_PORT === '3003') {
-    setTimeout(() => createGenesisTx(peers), 5000);
+    setTimeout(() => createGenesisTx(peers), 2000);
 }

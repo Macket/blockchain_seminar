@@ -1,5 +1,7 @@
 // redisDemo.js
 const redis = require('redis');
+const bluebird = require("bluebird");
+bluebird.promisifyAll(redis);
 const client = redis.createClient(); // this creates a new client
 
 
@@ -16,18 +18,17 @@ client.on('error', function (err) {
 //     "0123456789": "abcdefghij", // NOTE: key and value will be coerced to strings
 //     "some manner of key": "a type of value"
 // });
-client.select(0, function(err,res){
+client.select(1, function(err,res){
     if (err) {
         console.log(err);
         throw err;
     }
-    client.get('4422174', function (error, result) {
-        if (error) {
-            console.log(error);
-            throw error;
-        }
+    let _res = null;
+    const p = client.getAsync('0').then(function (result) {
         console.log('GET result ->' + result);
+        _res = result
     });
+    console.log();
 });
 
 //
